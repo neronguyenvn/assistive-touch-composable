@@ -9,7 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.example.composemoveablevirtualbutton.core.designsystem.component.AssistantButton
+import com.example.composemoveablevirtualbutton.core.designsystem.component.AssistiveTouchComposable
 import com.example.composemoveablevirtualbutton.ui.theme.ComposeMoveableVirtualButtonTheme
 
 class MainActivity : ComponentActivity() {
@@ -22,8 +22,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Yellow
                 ) {
-                    Box(Modifier.fillMaxSize(), Alignment.CenterEnd) {
-                        AssistantButton()
+                    Box(Modifier.fillMaxSize(), Alignment.CenterStart) {
+                        AssistiveTouchComposable()
                     }
                 }
             }
