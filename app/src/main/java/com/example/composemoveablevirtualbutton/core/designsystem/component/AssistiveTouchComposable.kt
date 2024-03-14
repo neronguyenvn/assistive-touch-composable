@@ -1,8 +1,11 @@
 package com.example.composemoveablevirtualbutton.core.designsystem.component
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -37,10 +40,9 @@ import kotlin.math.roundToInt
 
 
 @Composable
-fun AssistiveTouchComposable() {
+fun AssistiveTouchComposable(isMenuDisplay: Boolean, showMenu: (Boolean) -> Unit) {
 
     val offsetY by remember { mutableStateOf(Animatable(0f)) }
-    var showDialog by remember { mutableStateOf(false) }
     var expandFrom by remember { mutableStateOf(Alignment.Start) }
 
     LaunchedEffect(offsetY) {
@@ -48,22 +50,24 @@ fun AssistiveTouchComposable() {
     }
 
     AssistiveButton(
+        isMenuDisplay = isMenuDisplay,
         offsetY = offsetY,
-        onClick = { showDialog = true },
+        onClick = { showMenu(true) },
         changeExpandFrom = { expandFrom = it }
     )
 
     AssistiveMenu(
-        showDialog = showDialog,
+        isDisplay = isMenuDisplay,
         buttonOffsetY = offsetY.value,
         expandFrom = expandFrom
     ) {
-        showDialog = false
+        showMenu(false)
     }
 }
 
 @Composable
 private fun AssistiveButton(
+    isMenuDisplay: Boolean,
     offsetY: Animatable<Float, AnimationVector1D>,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -82,53 +86,59 @@ private fun AssistiveButton(
     val coroutineScope = rememberCoroutineScope()
 
 
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier
-            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragEnd = {
-                        val (dx, dy) = calculateDxDy(
-                            position = position,
-                            componentSize = size,
-                            screenSize = screenSize,
-                        ) {
-                            changeExpandFrom(it)
+    AnimatedVisibility(
+        visible = !isMenuDisplay,
+        enter = scaleIn(),
+        exit = scaleOut()
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragEnd = {
+                            val (dx, dy) = calculateDxDy(
+                                position = position,
+                                componentSize = size,
+                                screenSize = screenSize,
+                            ) {
+                                changeExpandFrom(it)
+                            }
+                            coroutineScope.launch {
+                                offsetX.stop()
+                                offsetX.animateTo(offsetX.value + dx)
+                            }
+                            coroutineScope.launch {
+                                offsetY.stop()
+                                offsetY.animateTo(offsetY.value + dy)
+                            }
+
+                        }) { change, dragAmount ->
+                        change.consume()
+
+                        coroutineScope.launch {
+                            offsetX.snapTo(offsetX.value + dragAmount.x)
                         }
                         coroutineScope.launch {
-                            offsetX.stop()
-                            offsetX.animateTo(offsetX.value + dx)
+                            offsetY.snapTo(offsetY.value + dragAmount.y)
                         }
-                        coroutineScope.launch {
-                            offsetY.stop()
-                            offsetY.animateTo(offsetY.value + dy)
-                        }
-
-                    }) { change, dragAmount ->
-                    change.consume()
-
-                    coroutineScope.launch {
-                        offsetX.snapTo(offsetX.value + dragAmount.x)
-                    }
-                    coroutineScope.launch {
-                        offsetY.snapTo(offsetY.value + dragAmount.y)
                     }
                 }
+                .onGloballyPositioned {
+                    size = it.size
+                    position = it.positionInRoot()
+                }
+                .statusBarsPadding()
+        ) {
+            IconButton(onClick = onClick) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp)
+                )
             }
-            .onGloballyPositioned {
-                size = it.size
-                position = it.positionInRoot()
-            }
-            .statusBarsPadding()
-    ) {
-        IconButton(onClick = onClick) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp)
-            )
         }
     }
 }

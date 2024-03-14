@@ -45,7 +45,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun AssistiveMenu(
-    showDialog: Boolean,
+    isDisplay: Boolean,
     buttonOffsetY: Float,
     expandFrom: Alignment.Horizontal,
     modifier: Modifier = Modifier,
@@ -76,7 +76,7 @@ fun AssistiveMenu(
     ) {
         Spacer(modifier = Modifier.weight(0.15f))
         AnimatedVisibility(
-            visible = showDialog,
+            visible = isDisplay,
             enter = scaleIn(
                 animationSpec = tween(AssistiveMenuDefaults.ANIMATION_TIME, easing = LinearEasing),
                 transformOrigin = if (expandFrom == Alignment.Start) {
