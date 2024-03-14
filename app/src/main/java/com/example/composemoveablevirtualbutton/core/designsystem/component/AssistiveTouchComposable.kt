@@ -6,6 +6,7 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -120,6 +121,7 @@ private fun AssistiveButton(
                 size = it.size
                 position = it.positionInRoot()
             }
+            .statusBarsPadding()
     ) {
         IconButton(onClick = onClick) {
             Icon(
