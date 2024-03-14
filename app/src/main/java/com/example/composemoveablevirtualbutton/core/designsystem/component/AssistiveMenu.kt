@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
@@ -23,10 +24,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -35,12 +46,34 @@ import kotlin.math.roundToInt
 @Composable
 fun AssistiveMenu(
     showDialog: Boolean,
-    offsetY: Float,
+    buttonOffsetY: Float,
     expandFrom: Alignment.Horizontal,
     modifier: Modifier = Modifier,
     dismissMenu: () -> Unit
 ) {
-    Row(modifier.offset { IntOffset(0, offsetY.roundToInt()) }) {
+    var y by remember { mutableFloatStateOf(0f) }
+    var height by remember { mutableIntStateOf(0) }
+    val screenHeight = with(LocalDensity.current) {
+        LocalConfiguration.current.screenHeightDp.dp.toPx().roundToInt()
+    }
+
+    var offsetY by remember {
+        mutableFloatStateOf(calculateOffsetY(y, height, screenHeight, buttonOffsetY))
+    }
+
+    LaunchedEffect(buttonOffsetY, height) {
+        offsetY = calculateOffsetY(y, height, screenHeight, buttonOffsetY)
+    }
+
+    Row(
+        modifier = modifier
+            .offset { IntOffset(0, offsetY.roundToInt()) }
+            .onGloballyPositioned {
+                y = it.positionInRoot().y
+                height = it.size.height
+            }
+            .statusBarsPadding()
+    ) {
         Spacer(modifier = Modifier.weight(0.15f))
         AnimatedVisibility(
             visible = showDialog,
@@ -94,6 +127,18 @@ private fun MenuContent(dismissMenu: () -> Unit) {
         }
     }
 }
+
+private fun calculateOffsetY(
+    y: Float,
+    componentHeight: Int,
+    screenHeight: Int,
+    buttonOffsetY: Float
+): Float = when {
+    y < 0 -> -y + buttonOffsetY
+    y > screenHeight - componentHeight -> screenHeight - y - componentHeight + buttonOffsetY
+    else -> buttonOffsetY
+}
+
 
 private object AssistiveMenuDefaults {
     const val ANIMATION_TIME = 400

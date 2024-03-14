@@ -54,7 +54,7 @@ fun AssistiveTouchComposable() {
 
     AssistiveMenu(
         showDialog = showDialog,
-        offsetY = offsetY.value,
+        buttonOffsetY = offsetY.value,
         expandFrom = expandFrom
     ) {
         showDialog = false
