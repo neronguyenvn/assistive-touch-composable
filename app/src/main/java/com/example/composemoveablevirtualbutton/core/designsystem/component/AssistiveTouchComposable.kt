@@ -2,8 +2,10 @@ package com.example.composemoveablevirtualbutton.core.designsystem.component
 
 import android.util.Log
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -14,7 +16,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,7 +38,7 @@ import kotlin.math.roundToInt
 @Composable
 fun AssistiveTouchComposable() {
 
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    val offsetY by remember { mutableStateOf(Animatable(0f)) }
     var showDialog by remember { mutableStateOf(false) }
     var expandFrom by remember { mutableStateOf(Alignment.Start) }
 
@@ -48,13 +49,12 @@ fun AssistiveTouchComposable() {
     AssistiveButton(
         offsetY = offsetY,
         onClick = { showDialog = true },
-        changeOffsetY = { offsetY += it },
         changeExpandFrom = { expandFrom = it }
     )
 
     AssistiveMenu(
         showDialog = showDialog,
-        offsetY = offsetY,
+        offsetY = offsetY.value,
         expandFrom = expandFrom
     ) {
         showDialog = false
@@ -63,42 +63,47 @@ fun AssistiveTouchComposable() {
 
 @Composable
 private fun AssistiveButton(
-    offsetY: Float,
+    offsetY: Animatable<Float, AnimationVector1D>,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
-    changeOffsetY: (Float) -> Unit,
     changeExpandFrom: (Alignment.Horizontal) -> Unit,
 ) {
-    val offsetX = remember { Animatable(0f) }
-
+    val offsetX by remember { mutableStateOf(Animatable(0f)) }
     var position by remember { mutableStateOf(Offset.Zero) }
-    var size = remember { IntSize.Zero }
 
+    var size = remember { IntSize.Zero }
+    val screenSize = with(LocalDensity.current) {
+        IntSize(
+            width = LocalConfiguration.current.screenWidthDp.dp.toPx().roundToInt(),
+            height = LocalConfiguration.current.screenHeightDp.dp.toPx().roundToInt()
+        )
+    }
     val coroutineScope = rememberCoroutineScope()
-    val configuration = LocalConfiguration.current
-    val screenWidth = with(LocalDensity.current) {
-        configuration.screenWidthDp.dp.toPx()
-    }
-    val widthPadding = with(LocalDensity.current) {
-        4.dp.toPx()
-    }
+
 
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.primary,
         modifier = modifier
-            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.roundToInt()) }
+            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragEnd = {
-                        val newOffsetX = if (position.x + size.width / 2 < screenWidth / 2) {
-                            changeExpandFrom(Alignment.Start)
-                            -position.x + offsetX.value + widthPadding
-                        } else {
-                            changeExpandFrom(Alignment.End)
-                            screenWidth - position.x - size.width + offsetX.value - widthPadding
+                        val (dx, dy) = calculateDxDy(
+                            position = position,
+                            componentSize = size,
+                            screenSize = screenSize,
+                        ) {
+                            changeExpandFrom(it)
                         }
-                        coroutineScope.launch { offsetX.animateTo(newOffsetX) }
+                        coroutineScope.launch {
+                            offsetX.stop()
+                            offsetX.animateTo(offsetX.value + dx)
+                        }
+                        coroutineScope.launch {
+                            offsetY.stop()
+                            offsetY.animateTo(offsetY.value + dy)
+                        }
 
                     }) { change, dragAmount ->
                     change.consume()
@@ -106,7 +111,9 @@ private fun AssistiveButton(
                     coroutineScope.launch {
                         offsetX.snapTo(offsetX.value + dragAmount.x)
                     }
-                    changeOffsetY(dragAmount.y)
+                    coroutineScope.launch {
+                        offsetY.snapTo(offsetY.value + dragAmount.y)
+                    }
                 }
             }
             .onGloballyPositioned {
@@ -118,7 +125,34 @@ private fun AssistiveButton(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
+                modifier = Modifier.size(80.dp)
             )
         }
     }
+}
+
+private fun calculateDxDy(
+    position: Offset,
+    componentSize: IntSize,
+    screenSize: IntSize,
+    changeExpandFrom: (Alignment.Horizontal) -> Unit
+): Pair<Float, Float> {
+
+    val dx = if (position.x + componentSize.width / 2 < screenSize.width / 2) {
+        changeExpandFrom(Alignment.Start)
+        -position.x
+    } else {
+        changeExpandFrom(Alignment.End)
+        screenSize.width - position.x - componentSize.width
+    }
+
+    val dy = when {
+        position.y < 0 -> -position.y
+        position.y > screenSize.height - componentSize.height ->
+            screenSize.height - position.y - componentSize.height
+
+        else -> 0f
+    }
+
+    return Pair(dx, dy)
 }
