@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -70,6 +71,7 @@ private fun AssistiveButton(
     isMenuDisplay: Boolean,
     offsetY: Animatable<Float, AnimationVector1D>,
     modifier: Modifier = Modifier,
+    coroutineScope: CoroutineScope = rememberCoroutineScope(),
     onClick: () -> Unit,
     changeExpandFrom: (Alignment.Horizontal) -> Unit,
 ) {
@@ -83,54 +85,52 @@ private fun AssistiveButton(
             height = LocalConfiguration.current.screenHeightDp.dp.toPx().roundToInt()
         )
     }
-    val coroutineScope = rememberCoroutineScope()
-
 
     AnimatedVisibility(
         visible = !isMenuDisplay,
         enter = scaleIn(),
-        exit = scaleOut()
+        exit = scaleOut(),
+        modifier = modifier
+            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragEnd = {
+                        val (dx, dy) = calculateDxDy(
+                            position = position,
+                            componentSize = size,
+                            screenSize = screenSize,
+                        ) {
+                            changeExpandFrom(it)
+                        }
+                        coroutineScope.launch {
+                            offsetX.stop()
+                            offsetX.animateTo(offsetX.value + dx)
+                        }
+                        coroutineScope.launch {
+                            offsetY.stop()
+                            offsetY.animateTo(offsetY.value + dy)
+                        }
+
+                    }) { change, dragAmount ->
+                    change.consume()
+
+                    coroutineScope.launch {
+                        offsetX.snapTo(offsetX.value + dragAmount.x)
+                    }
+                    coroutineScope.launch {
+                        offsetY.snapTo(offsetY.value + dragAmount.y)
+                    }
+                }
+            }
+            .onGloballyPositioned {
+                size = it.size
+                position = it.positionInRoot()
+            }
+            .statusBarsPadding()
     ) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary,
-            modifier = modifier
-                .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragEnd = {
-                            val (dx, dy) = calculateDxDy(
-                                position = position,
-                                componentSize = size,
-                                screenSize = screenSize,
-                            ) {
-                                changeExpandFrom(it)
-                            }
-                            coroutineScope.launch {
-                                offsetX.stop()
-                                offsetX.animateTo(offsetX.value + dx)
-                            }
-                            coroutineScope.launch {
-                                offsetY.stop()
-                                offsetY.animateTo(offsetY.value + dy)
-                            }
-
-                        }) { change, dragAmount ->
-                        change.consume()
-
-                        coroutineScope.launch {
-                            offsetX.snapTo(offsetX.value + dragAmount.x)
-                        }
-                        coroutineScope.launch {
-                            offsetY.snapTo(offsetY.value + dragAmount.y)
-                        }
-                    }
-                }
-                .onGloballyPositioned {
-                    size = it.size
-                    position = it.positionInRoot()
-                }
-                .statusBarsPadding()
         ) {
             IconButton(onClick = onClick) {
                 Icon(
