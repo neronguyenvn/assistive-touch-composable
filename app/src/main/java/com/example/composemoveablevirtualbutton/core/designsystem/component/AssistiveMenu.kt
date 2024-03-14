@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -78,7 +79,8 @@ private fun MenuContent(dismissMenu: () -> Unit) {
             items(9) {
                 Surface(
                     color = Color.Red,
-                    shape = CircleShape
+                    shape = CircleShape,
+                    modifier = Modifier.aspectRatio(1f)
                 ) {
                     IconButton(onClick = dismissMenu) {
                         Icon(
